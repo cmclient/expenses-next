@@ -1,0 +1,49 @@
+{
+  "name": "expenses",
+  "version": "0.2.2",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "cross-env PORT=5006 next start",
+    "lint": "eslint . --ext .ts,.tsx",
+    "manage-users": "node manage-users.mjs",
+    "postinstall": "next build"
+  },
+  "dependencies": {
+    "@heroui/react": "^2.8.10",
+    "@heroui/system": "^2.4.28",
+    "@heroui/theme": "^2.4.26",
+    "@heroui/toast": "^2.0.22",
+    "@iconify/react": "^6.0.2",
+    "@react-aria/ssr": "^3.10.0",
+    "@react-aria/visually-hidden": "^3.9.0",
+    "@types/web-push": "^3.6.4",
+    "bcryptjs": "^3.0.3",
+    "chart.js": "^4.5.1",
+    "clsx": "2.1.1",
+    "dotenv": "^17.4.2",
+    "framer-motion": "^12.38.0",
+    "jose": "^6.2.2",
+    "next": "^16.2.4",
+    "next-themes": "^0.4.6",
+    "nodemailer": "^8.0.6",
+    "react": "^19.2.5",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.2.5",
+    "uuid": "^14.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^25.6.0",
+    "@types/nodemailer": "^8.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^11.0.0",
+    "cross-env": "^10.1.0",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^6.0.3"
+  }
+}
