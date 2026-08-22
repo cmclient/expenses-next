@@ -15,6 +15,8 @@ export async function GET() {
     username: user.username,
     isAdmin: user.isAdmin,
     avatar: user.avatar || null,
+    has2fa: user.twofaEnabled || false,
+    backupCodesRemaining: user.twofaBackupCodes?.length || 0,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   });

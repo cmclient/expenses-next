@@ -11,6 +11,8 @@ import { useTranslation } from "@/lib/i18n";
 export default function SignInPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [needs2fa, setNeeds2fa] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -22,15 +24,30 @@ export default function SignInPage() {
       addToast({ title: t("sign_in.fill_fields"), color: "warning" });
       return;
     }
+    if (needs2fa && !totpCode.trim()) {
+      addToast({ title: t("sign_in.enter_2fa_code"), color: "warning" });
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          ...(needs2fa ? { totpCode: totpCode.trim() } : {}),
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
+        if (err.requires2fa) {
+          setNeeds2fa(true);
+          if (err.error !== "2FA code required") {
+            addToast({ title: err.error, color: "danger" });
+          }
+          return;
+        }
         throw new Error(err.error || t("sign_in.login_failed"));
       }
       router.push("/dashboard");
@@ -81,6 +98,17 @@ export default function SignInPage() {
               }
               autoComplete="current-password"
             />
+            {needs2fa && (
+              <Input
+                label={t("sign_in.2fa_code")}
+                placeholder={t("sign_in.2fa_code_placeholder")}
+                value={totpCode}
+                onValueChange={setTotpCode}
+                startContent={<Icon icon="solar:shield-keyhole-bold" className="text-default-400" width={18} />}
+                autoComplete="one-time-code"
+                autoFocus
+              />
+            )}
             <Button
               type="submit"
               color="primary"

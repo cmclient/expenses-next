@@ -43,7 +43,10 @@
     "password_placeholder": "Wprowadź hasło",
     "submit": "Zaloguj się",
     "fill_fields": "Proszę wypełnić wszystkie pola",
-    "login_failed": "Logowanie nie powiodło się"
+    "login_failed": "Logowanie nie powiodło się",
+    "enter_2fa_code": "Proszę wprowadzić kod 2FA",
+    "2fa_code": "Kod uwierzytelniający",
+    "2fa_code_placeholder": "6-cyfrowy kod lub kod zapasowy"
   },
   "dashboard": {
     "income": "Przychody",
@@ -286,5 +289,30 @@
     "fill_password_fields": "Wype\u0142nij obecne i nowe has\u0142o",
     "password_min_length": "Nowe has\u0142o musi mie\u0107 co najmniej 6 znak\u00f3w",
     "passwords_dont_match": "Nowe has\u0142a nie pasuj\u0105 do siebie",
-    "failed_load": "Nie uda\u0142o si\u0119 za\u0142adowa\u0107 profilu"  }
+    "failed_load": "Nie uda\u0142o si\u0119 za\u0142adowa\u0107 profilu",
+    "2fa_title": "Uwierzytelnianie dwusk\u0142adnikowe",
+    "2fa_status": "Status",
+    "2fa_enabled_label": "W\u0142\u0105czone",
+    "2fa_disabled_label": "Wy\u0142\u0105czone",
+    "2fa_backup_remaining": "Pozosta\u0142o kod\u00f3w zapasowych: {count}",
+    "2fa_enable": "W\u0142\u0105cz 2FA",
+    "2fa_disable": "Wy\u0142\u0105cz 2FA",
+    "2fa_setup_title": "Konfiguracja uwierzytelniania dwusk\u0142adnikowego",
+    "2fa_setup_description": "Dodaj dodatkow\u0105 warstw\u0119 zabezpiecze\u0144 do swojego konta, wymagaj\u0105c kodu weryfikacyjnego z aplikacji uwierzytelniaj\u0105cej.",
+    "2fa_start_setup": "Rozpocznij konfiguracj\u0119",
+    "2fa_scan_qr": "Zeskanuj ten kod QR za pomoc\u0105 aplikacji uwierzytelniaj\u0105cej (Google Authenticator, Authy itp.):",
+    "2fa_manual_entry": "Klucz do r\u0119cznego wpisu",
+    "2fa_secret_copied": "Klucz skopiowany do schowka",
+    "2fa_verification_code": "Kod weryfikacyjny",
+    "2fa_verify_enable": "Zweryfikuj i w\u0142\u0105cz",
+    "2fa_verify_failed": "Weryfikacja nie powiod\u0142a si\u0119",
+    "2fa_setup_failed": "Nie uda\u0142o si\u0119 rozpocz\u0105\u0107 konfiguracji 2FA",
+    "2fa_setup_complete": "2FA jest teraz w\u0142\u0105czone!",
+    "2fa_backup_description": "Zapisz te kody zapasowe w bezpiecznym miejscu. Ka\u017cdy kod mo\u017ce by\u0107 u\u017cyty tylko raz do zalogowania si\u0119, je\u015bli stracisz dost\u0119p do aplikacji uwierzytelniaj\u0105cej.",
+    "2fa_download_codes": "Pobierz kody zapasowe",
+    "2fa_enabled": "Uwierzytelnianie dwusk\u0142adnikowe w\u0142\u0105czone",
+    "2fa_disabled": "Uwierzytelnianie dwusk\u0142adnikowe wy\u0142\u0105czone",
+    "2fa_disable_failed": "Nie uda\u0142o si\u0119 wy\u0142\u0105czy\u0107 2FA",
+    "2fa_enter_code": "Prosz\u0119 wprowadzi\u0107 6-cyfrowy kod"
+  }
 }

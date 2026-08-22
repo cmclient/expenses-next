@@ -4,6 +4,9 @@ export interface User {
   password: string; // bcrypt hash
   isAdmin: boolean;
   avatar?: string; // icon name e.g. "solar:cat-bold-duotone"
+  twofaSecret?: string;
+  twofaEnabled?: boolean;
+  twofaBackupCodes?: string[];
   createdAt: string;
   updatedAt: string;
 }
