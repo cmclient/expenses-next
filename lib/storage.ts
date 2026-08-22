@@ -14,6 +14,22 @@ import {
   WebPushSubscriptionsFile,
   DEFAULT_CATEGORIES,
 } from "./types";
+import {
+  sqliteGetUsers,
+  sqliteSaveUsers,
+  sqliteGetUserByUsername,
+  sqliteGetUserById,
+  sqliteGetConfig,
+  sqliteSaveConfig,
+  sqliteGetExpenses,
+  sqliteSaveExpenses,
+  sqliteGetReminders,
+  sqliteSaveReminders,
+  sqliteGetPushSubscriptions,
+  sqliteSavePushSubscriptions,
+  sqliteGetActivityLogs,
+  sqliteAppendActivityLog,
+} from "./sqlite";
 
 // Data directory - configurable via env, defaults to ./data
 const DATA_DIR = process.env.STORAGE_URL || path.join(process.cwd(), "data");
@@ -25,9 +41,30 @@ function ensureDir(dir: string) {
   }
 }
 
+// ---- Persistence mode ----
+
+export type PersistenceMode = "JSON" | "SQLITE";
+
+let _validatedMode: PersistenceMode | null = null;
+
+export function getPersistenceMode(): PersistenceMode {
+  if (_validatedMode) return _validatedMode;
+  const raw = (process.env.PERSISTENCE_MODE || "JSON").toUpperCase();
+  if (raw !== "JSON" && raw !== "SQLITE") {
+    console.error(
+      `[Storage] Invalid PERSISTENCE_MODE: "${raw}". Valid options: JSON, SQLITE`
+    );
+    process.exit(1);
+  }
+  _validatedMode = raw;
+  return raw;
+}
+
 // ---- Users ----
 
 export function getUsers(): User[] {
+  if (getPersistenceMode() === "SQLITE") return sqliteGetUsers();
+
   ensureDir(DATA_DIR);
   if (!fs.existsSync(USERS_PATH)) {
     const initial: UsersFile = { users: [] };
@@ -40,19 +77,26 @@ export function getUsers(): User[] {
 }
 
 export function saveUsers(users: User[]) {
+  if (getPersistenceMode() === "SQLITE") return sqliteSaveUsers(users);
+
   ensureDir(DATA_DIR);
   fs.writeFileSync(USERS_PATH, JSON.stringify({ users }, null, 4));
 }
 
 export function getUserByUsername(username: string): User | undefined {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteGetUserByUsername(username);
+
   return getUsers().find((u) => u.username === username);
 }
 
 export function getUserById(id: string): User | undefined {
+  if (getPersistenceMode() === "SQLITE") return sqliteGetUserById(id);
+
   return getUsers().find((u) => u.id === id);
 }
 
-// ---- Per-user data directories ----
+// ---- Per-user data directories (JSON mode) ----
 
 function userDataDir(userId: string): string {
   return path.join(DATA_DIR, "users", userId);
@@ -81,6 +125,8 @@ function userActivityPath(userId: string): string {
 // ---- Config (per-user) ----
 
 export function getConfig(userId: string): AppConfig {
+  if (getPersistenceMode() === "SQLITE") return sqliteGetConfig(userId);
+
   const dir = userDataDir(userId);
   const configPath = userConfigPath(userId);
   ensureDir(dir);
@@ -99,6 +145,9 @@ export function getConfig(userId: string): AppConfig {
 }
 
 export function saveConfig(userId: string, config: AppConfig) {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteSaveConfig(userId, config);
+
   const dir = userDataDir(userId);
   ensureDir(dir);
   fs.writeFileSync(userConfigPath(userId), JSON.stringify(config, null, 4));
@@ -107,6 +156,8 @@ export function saveConfig(userId: string, config: AppConfig) {
 // ---- Expenses (per-user) ----
 
 export function getExpenses(userId: string): Expense[] {
+  if (getPersistenceMode() === "SQLITE") return sqliteGetExpenses(userId);
+
   const dir = userDataDir(userId);
   const expPath = userExpensesPath(userId);
   ensureDir(dir);
@@ -121,6 +172,9 @@ export function getExpenses(userId: string): Expense[] {
 }
 
 export function saveExpenses(userId: string, expenses: Expense[]) {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteSaveExpenses(userId, expenses);
+
   const dir = userDataDir(userId);
   ensureDir(dir);
   const data: ExpensesFile = { expenses };
@@ -130,6 +184,8 @@ export function saveExpenses(userId: string, expenses: Expense[]) {
 // ---- Reminders (per-user) ----
 
 export function getReminders(userId: string): Reminder[] {
+  if (getPersistenceMode() === "SQLITE") return sqliteGetReminders(userId);
+
   const dir = userDataDir(userId);
   const remPath = userRemindersPath(userId);
   ensureDir(dir);
@@ -144,6 +200,9 @@ export function getReminders(userId: string): Reminder[] {
 }
 
 export function saveReminders(userId: string, reminders: Reminder[]) {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteSaveReminders(userId, reminders);
+
   const dir = userDataDir(userId);
   ensureDir(dir);
   const data: RemindersFile = { reminders };
@@ -153,6 +212,9 @@ export function saveReminders(userId: string, reminders: Reminder[]) {
 // ---- Web push subscriptions (per-user) ----
 
 export function getPushSubscriptions(userId: string): WebPushSubscription[] {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteGetPushSubscriptions(userId);
+
   const dir = userDataDir(userId);
   const subsPath = userPushSubscriptionsPath(userId);
   ensureDir(dir);
@@ -166,11 +228,20 @@ export function getPushSubscriptions(userId: string): WebPushSubscription[] {
   return data.subscriptions || [];
 }
 
-export function savePushSubscriptions(userId: string, subscriptions: WebPushSubscription[]) {
+export function savePushSubscriptions(
+  userId: string,
+  subscriptions: WebPushSubscription[]
+) {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteSavePushSubscriptions(userId, subscriptions);
+
   const dir = userDataDir(userId);
   ensureDir(dir);
   const data: WebPushSubscriptionsFile = { subscriptions };
-  fs.writeFileSync(userPushSubscriptionsPath(userId), JSON.stringify(data, null, 4));
+  fs.writeFileSync(
+    userPushSubscriptionsPath(userId),
+    JSON.stringify(data, null, 4)
+  );
 }
 
 // ---- Activity Logs (per-user) ----
@@ -178,6 +249,9 @@ export function savePushSubscriptions(userId: string, subscriptions: WebPushSubs
 const MAX_ACTIVITY_LOGS = 500;
 
 export function getActivityLogs(userId: string): ActivityLog[] {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteGetActivityLogs(userId);
+
   const dir = userDataDir(userId);
   const actPath = userActivityPath(userId);
   ensureDir(dir);
@@ -192,6 +266,9 @@ export function getActivityLogs(userId: string): ActivityLog[] {
 }
 
 export function appendActivityLog(userId: string, log: ActivityLog) {
+  if (getPersistenceMode() === "SQLITE")
+    return sqliteAppendActivityLog(userId, log);
+
   const logs = getActivityLogs(userId);
   logs.unshift(log);
   if (logs.length > MAX_ACTIVITY_LOGS) {

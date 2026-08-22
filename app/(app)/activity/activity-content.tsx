@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Card,
   CardBody,
@@ -10,6 +10,7 @@ import {
   SelectItem,
   Pagination,
   Tooltip,
+  Spinner,
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { Icon } from "@iconify/react";
@@ -36,6 +37,17 @@ const ACTION_CONFIG: Record<ActivityAction, { icon: string; color: string; color
 };
 
 const PAGE_SIZE = 20;
+
+const COUNTRY_FLAGS: Record<string, string> = {};
+function countryFlag(code: string): string {
+  if (!code) return "";
+  if (COUNTRY_FLAGS[code]) return COUNTRY_FLAGS[code];
+  const flag = String.fromCodePoint(
+    ...code.toUpperCase().split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  );
+  COUNTRY_FLAGS[code] = flag;
+  return flag;
+}
 
 function parseUserAgent(ua: string): { browser: string; os: string } {
   if (!ua || ua === "unknown") return { browser: "Unknown", os: "Unknown" };
@@ -71,6 +83,119 @@ function formatRelativeTime(timestamp: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   if (diffDay < 7) return `${diffDay}d ago`;
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+}
+
+// ---- IP Info cache & tooltip ----
+
+interface IpInfo {
+  ip: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  country_code?: string;
+  continent?: string;
+  as_name?: string;
+  asn?: string;
+  timezone?: string;
+  local_time?: string;
+  detection?: {
+    vpn?: boolean;
+    proxy?: boolean;
+    tor?: boolean;
+    hosting?: boolean;
+    cloud?: boolean;
+  };
+}
+
+const ipInfoCache = new Map<string, IpInfo | "loading" | "error">();
+
+function IpTooltipContent({ ip }: { ip: string }) {
+  const [info, setInfo] = useState<IpInfo | "loading" | "error">(
+    ipInfoCache.get(ip) || "loading"
+  );
+
+  useEffect(() => {
+    const cached = ipInfoCache.get(ip);
+    if (cached && cached !== "loading") {
+      setInfo(cached);
+      return;
+    }
+
+    ipInfoCache.set(ip, "loading");
+    fetch(`/api/ip-info?ip=${encodeURIComponent(ip)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: IpInfo) => {
+        ipInfoCache.set(ip, data);
+        setInfo(data);
+      })
+      .catch(() => {
+        ipInfoCache.set(ip, "error");
+        setInfo("error");
+      });
+  }, [ip]);
+
+  if (info === "loading") {
+    return (
+      <div className="flex items-center gap-2 p-1">
+        <Spinner size="sm" />
+        <span className="text-xs">Loading...</span>
+      </div>
+    );
+  }
+
+  if (info === "error") {
+    return (
+      <div className="p-1 text-xs text-default-400">{ip}</div>
+    );
+  }
+
+  const flags: string[] = [];
+  if (info.detection?.vpn) flags.push("VPN");
+  if (info.detection?.proxy) flags.push("Proxy");
+  if (info.detection?.tor) flags.push("Tor");
+  if (info.detection?.hosting) flags.push("Hosting");
+  if (info.detection?.cloud) flags.push("Cloud");
+
+  const flag = info.country_code ? countryFlag(info.country_code) : "";
+  const location = [info.city, info.region, info.country].filter(Boolean).join(", ");
+
+  return (
+    <div className="p-1 space-y-1.5 max-w-[280px]">
+      <div className="font-mono text-xs text-default-500">{ip}</div>
+      {location && (
+        <div className="flex items-center gap-1.5 text-sm">
+          {flag && <span>{flag}</span>}
+          <span>{location}</span>
+        </div>
+      )}
+      {info.as_name && (
+        <div className="text-xs text-default-400">
+          {info.as_name} {info.asn ? `(${info.asn})` : ""}
+        </div>
+      )}
+      {info.timezone && (
+        <div className="text-xs text-default-400">
+          UTC{info.timezone}{info.local_time ? ` — ${info.local_time}` : ""}
+        </div>
+      )}
+      {flags.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap">
+          {flags.map((f) => (
+            <span
+              key={f}
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                f === "VPN" || f === "Proxy" || f === "Tor"
+                  ? "bg-warning/15 text-warning"
+                  : "bg-default/15 text-default-500"
+              }`}
+            >
+              {f}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ActivityContent() {
@@ -281,18 +406,32 @@ export default function ActivityContent() {
                             {isAuthAction && (
                               <div className="flex items-center gap-3 mt-1 flex-wrap">
                                 {log.ip && log.ip !== "unknown" && (
-                                  <Tooltip content={log.ip}>
-                                    <span className="flex items-center gap-1 text-xs text-default-400">
+                                  <Tooltip
+                                    content={<IpTooltipContent ip={log.ip} />}
+                                    delay={300}
+                                    classNames={{ content: "p-2" }}
+                                  >
+                                    <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
                                       <Icon icon="solar:global-bold" width={12} />
                                       {log.ip}
                                     </span>
                                   </Tooltip>
                                 )}
                                 {parsed && parsed.browser !== "Unknown" && (
-                                  <span className="flex items-center gap-1 text-xs text-default-400">
-                                    <Icon icon="solar:monitor-bold" width={12} />
-                                    {parsed.browser} / {parsed.os}
-                                  </span>
+                                  <Tooltip
+                                    content={
+                                      <div className="max-w-[360px] p-1">
+                                        <p className="text-xs font-mono break-all">{log.userAgent}</p>
+                                      </div>
+                                    }
+                                    delay={300}
+                                    classNames={{ content: "p-2" }}
+                                  >
+                                    <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
+                                      <Icon icon="solar:monitor-bold" width={12} />
+                                      {parsed.browser} / {parsed.os}
+                                    </span>
+                                  </Tooltip>
                                 )}
                               </div>
                             )}
