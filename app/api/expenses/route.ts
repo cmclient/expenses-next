@@ -79,8 +79,11 @@ export async function DELETE(request: NextRequest) {
   saveExpenses(session.userId, filtered);
 
   if (deleted.length > 0) {
+    const details = deleted
+      .map((e) => `${e.name} (${e.amount} ${e.currency.toUpperCase()}, ${e.category})`)
+      .join("; ");
     logActivity(session.userId, "expense_delete", request, {
-      details: deleted.map((e) => e.name).join(", "),
+      details,
       metadata: { count: String(removed) },
     });
   }

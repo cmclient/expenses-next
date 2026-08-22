@@ -38,15 +38,9 @@ const ACTION_CONFIG: Record<ActivityAction, { icon: string; color: string; color
 
 const PAGE_SIZE = 20;
 
-const COUNTRY_FLAGS: Record<string, string> = {};
-function countryFlag(code: string): string {
+function countryFlagIcon(code: string): string {
   if (!code) return "";
-  if (COUNTRY_FLAGS[code]) return COUNTRY_FLAGS[code];
-  const flag = String.fromCodePoint(
-    ...code.toUpperCase().split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
-  );
-  COUNTRY_FLAGS[code] = flag;
-  return flag;
+  return `flag:${code.toLowerCase()}-4x3`;
 }
 
 function parseUserAgent(ua: string): { browser: string; os: string } {
@@ -156,7 +150,7 @@ function IpTooltipContent({ ip }: { ip: string }) {
   if (info.detection?.hosting) flags.push("Hosting");
   if (info.detection?.cloud) flags.push("Cloud");
 
-  const flag = info.country_code ? countryFlag(info.country_code) : "";
+  const flagIcon = info.country_code ? countryFlagIcon(info.country_code) : "";
   const location = [info.city, info.region, info.country].filter(Boolean).join(", ");
 
   return (
@@ -164,7 +158,7 @@ function IpTooltipContent({ ip }: { ip: string }) {
       <div className="font-mono text-xs text-default-500">{ip}</div>
       {location && (
         <div className="flex items-center gap-1.5 text-sm">
-          {flag && <span>{flag}</span>}
+          {flagIcon && <Icon icon={flagIcon} width={16} height={12} style={{ borderRadius: "2px" }} />}
           <span>{location}</span>
         </div>
       )}
@@ -385,7 +379,6 @@ export default function ActivityContent() {
                     {group.logs.map((log) => {
                       const config = ACTION_CONFIG[log.action] || ACTION_CONFIG.login;
                       const parsed = log.userAgent ? parseUserAgent(log.userAgent) : null;
-                      const isAuthAction = log.action === "login" || log.action === "login_failed" || log.action === "logout";
 
                       return (
                         <div key={log.id} className="flex items-start gap-3 px-4 py-3 hover:bg-default-50 transition-colors">
@@ -403,20 +396,18 @@ export default function ActivityContent() {
                                 </span>
                               )}
                             </div>
-                            {isAuthAction && (
+                            {log.ip && log.ip !== "unknown" && (
                               <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                {log.ip && log.ip !== "unknown" && (
-                                  <Tooltip
-                                    content={<IpTooltipContent ip={log.ip} />}
-                                    delay={300}
-                                    classNames={{ content: "p-2" }}
-                                  >
-                                    <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
-                                      <Icon icon="solar:global-bold" width={12} />
-                                      {log.ip}
-                                    </span>
-                                  </Tooltip>
-                                )}
+                                <Tooltip
+                                  content={<IpTooltipContent ip={log.ip} />}
+                                  delay={300}
+                                  classNames={{ content: "p-2" }}
+                                >
+                                  <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
+                                    <Icon icon="solar:global-bold" width={12} />
+                                    {log.ip}
+                                  </span>
+                                </Tooltip>
                                 {parsed && parsed.browser !== "Unknown" && (
                                   <Tooltip
                                     content={

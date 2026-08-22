@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getUsers, saveUsers } from "@/lib/storage";
-import { logActivity, logActivityNoRequest } from "@/lib/activity";
+import { logActivity } from "@/lib/activity";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
@@ -89,7 +89,7 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({ ok: true, backupCodes });
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -103,7 +103,7 @@ export async function DELETE() {
   users[idx].updatedAt = new Date().toISOString();
   saveUsers(users);
 
-  logActivityNoRequest(session.userId, "2fa_disable");
+  logActivity(session.userId, "2fa_disable", request);
 
   return NextResponse.json({ ok: true });
 }
