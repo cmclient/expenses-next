@@ -46,7 +46,8 @@
     "login_failed": "Login failed",
     "enter_2fa_code": "Please enter the 2FA code",
     "2fa_code": "Authentication Code",
-    "2fa_code_placeholder": "6-digit code or backup code"
+    "2fa_code_placeholder": "6-digit code or backup code",
+    "remember_me": "Remember me"
   },
   "dashboard": {
     "income": "Income",
@@ -69,6 +70,8 @@
     "fill_fields": "Fill in all fields",
     "deleted": "Deleted",
     "delete_failed": "Delete failed",
+    "delete_title": "Delete Transaction",
+    "delete_message": "Are you sure you want to delete this transaction? This action cannot be undone.",
     "updated": "Updated",
     "update_failed": "Update failed",
     "failed_load": "Failed to load data"
@@ -104,6 +107,8 @@
     "export_failed": "Export failed",
     "deleted": "Deleted",
     "delete_failed": "Delete failed",
+    "delete_title": "Delete Transaction",
+    "delete_message": "Are you sure you want to delete this transaction? This action cannot be undone.",
     "updated": "Updated",
     "update_failed": "Update failed",
     "failed_load": "Failed to load data"

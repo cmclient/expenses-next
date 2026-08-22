@@ -7,7 +7,7 @@ import speakeasy from "speakeasy";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { username, password, totpCode } = body;
+  const { username, password, totpCode, remember } = body;
 
   if (!username || !password) {
     return NextResponse.json({ error: "Username and password are required" }, { status: 400 });
@@ -66,11 +66,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const expirationTime = remember ? "30d" : "1d";
   const token = await createSession({
     userId: user.id,
     username: user.username,
     isAdmin: user.isAdmin,
-  });
+  }, expirationTime);
 
   const response = NextResponse.json({
     user: { id: user.id, username: user.username, isAdmin: user.isAdmin },
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: remember ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
     path: "/",
   });
 

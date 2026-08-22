@@ -46,6 +46,8 @@ export default function TransactionsContent() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -136,17 +138,26 @@ export default function TransactionsContent() {
   const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE));
   const pagedExpenses = filteredExpenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleDelete = async (id: string) => {
+  const confirmDelete = (id: string) => {
+    setDeleteId(id);
+    onDeleteOpen();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
       await fetch("/api/expenses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deleteId }),
       });
       addToast({ title: t("transactions.deleted"), color: "success" });
       fetchData();
     } catch {
       addToast({ title: t("transactions.delete_failed"), color: "danger" });
+    } finally {
+      onDeleteClose();
+      setDeleteId(null);
     }
   };
 
@@ -385,7 +396,7 @@ export default function TransactionsContent() {
                           <Button isIconOnly size="sm" variant="light" onPress={() => openEdit(e)}>
                             <Icon icon="solar:pen-bold" width={14} />
                           </Button>
-                          <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => handleDelete(e.id)}>
+                          <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => confirmDelete(e.id)}>
                             <Icon icon="solar:trash-bin-minimalistic-bold" width={14} />
                           </Button>
                         </div>
@@ -430,6 +441,20 @@ export default function TransactionsContent() {
           <ModalFooter>
             <Button variant="flat" onPress={onClose}>{t("common.cancel")}</Button>
             <Button color="primary" onPress={handleEditSave}>{t("common.save")}</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader>{t("transactions.delete_title")}</ModalHeader>
+          <ModalBody>
+            <p className="text-default-500">{t("transactions.delete_message")}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={onDeleteClose}>{t("common.cancel")}</Button>
+            <Button color="danger" onPress={handleDelete}>{t("common.confirm")}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

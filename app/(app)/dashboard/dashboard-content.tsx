@@ -48,6 +48,9 @@ export default function DashboardContent() {
 
   // Quick edit / duplicate modal
   const { isOpen, onOpen, onClose } = useDisclosure();
+  // Delete confirmation modal
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -200,17 +203,26 @@ export default function DashboardContent() {
     }
   };
 
-  const handleDeleteExpense = async (id: string) => {
+  const confirmDelete = (id: string) => {
+    setDeleteId(id);
+    onDeleteOpen();
+  };
+
+  const handleDeleteExpense = async () => {
+    if (!deleteId) return;
     try {
       await fetch("/api/expenses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deleteId }),
       });
       addToast({ title: t("dashboard.deleted"), color: "success" });
       fetchData();
     } catch {
       addToast({ title: t("dashboard.delete_failed"), color: "danger" });
+    } finally {
+      onDeleteClose();
+      setDeleteId(null);
     }
   };
 
@@ -555,7 +567,7 @@ export default function DashboardContent() {
                             size="sm"
                             variant="light"
                             color="danger"
-                            onPress={() => handleDeleteExpense(e.id)}
+                            onPress={() => confirmDelete(e.id)}
                           >
                             <Icon icon="solar:trash-bin-minimalistic-bold" width={14} />
                           </Button>
@@ -608,6 +620,20 @@ export default function DashboardContent() {
           <ModalFooter>
             <Button variant="flat" onPress={onClose}>{t("common.cancel")}</Button>
             <Button color="primary" onPress={handleEditSave}>{t("common.save")}</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader>{t("dashboard.delete_title")}</ModalHeader>
+          <ModalBody>
+            <p className="text-default-500">{t("dashboard.delete_message")}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={onDeleteClose}>{t("common.cancel")}</Button>
+            <Button color="danger" onPress={handleDeleteExpense}>{t("common.confirm")}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

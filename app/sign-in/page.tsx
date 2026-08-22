@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardBody, CardHeader, Button, Input } from "@heroui/react";
+import { Card, CardBody, CardHeader, Button, Input, Checkbox } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ export default function SignInPage() {
   const [totpCode, setTotpCode] = useState("");
   const [needs2fa, setNeeds2fa] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { t } = useTranslation();
@@ -36,6 +37,7 @@ export default function SignInPage() {
         body: JSON.stringify({
           username: username.trim(),
           password,
+          remember,
           ...(needs2fa ? { totpCode: totpCode.trim() } : {}),
         }),
       });
@@ -98,6 +100,11 @@ export default function SignInPage() {
               }
               autoComplete="current-password"
             />
+            <div className="flex items-center">
+              <Checkbox size="sm" isSelected={remember} onValueChange={setRemember}>
+                {t("sign_in.remember_me")}
+              </Checkbox>
+            </div>
             {needs2fa && (
               <Input
                 label={t("sign_in.2fa_code")}
