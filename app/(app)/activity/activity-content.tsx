@@ -16,37 +16,6 @@ import { Icon } from "@iconify/react";
 import { ActivityLog, ActivityAction } from "@/lib/types";
 import { useTranslation } from "@/lib/i18n";
 
-interface IpDetection {
-  cloud: boolean;
-  hosting: boolean;
-  proxy: boolean;
-  spamhaus: boolean;
-  tor: boolean;
-  vpn: boolean;
-}
-
-interface IpInfo {
-  ip: string;
-  city: string;
-  region: string;
-  postal: string;
-  country: string;
-  country_code: string;
-  continent: string;
-  continent_code: string;
-  latitude: string;
-  longitude: string;
-  as_name: string;
-  as_domain: string;
-  asn: string;
-  timezone: string;
-  local_time: string;
-  detection: IpDetection;
-  suggestion: string;
-  is_bogon: boolean;
-  is_anycast: boolean;
-}
-
 const ACTION_CONFIG: Record<ActivityAction, { icon: string; color: string; colorClass: string }> = {
   login: { icon: "solar:login-2-bold-duotone", color: "success", colorClass: "text-success bg-success/10" },
   login_failed: { icon: "solar:shield-warning-bold-duotone", color: "danger", colorClass: "text-danger bg-danger/10" },
@@ -110,7 +79,6 @@ export default function ActivityContent() {
   const [loading, setLoading] = useState(true);
   const [filterAction, setFilterAction] = useState<string>("");
   const [page, setPage] = useState(1);
-  const [ipInfoCache, setIpInfoCache] = useState<Map<string, IpInfo>>(new Map());
 
   const fetchData = useCallback(async () => {
     try {
@@ -123,61 +91,6 @@ export default function ActivityContent() {
       setLoading(false);
     }
   }, [t]);
-
-  const fetchIpInfo = useCallback(async (ip: string): Promise<IpInfo | null> => {
-    if (!ip || ip === "unknown") return null;
-    
-    if (ipInfoCache.has(ip)) {
-      return ipInfoCache.get(ip)!;
-    }
-
-    try {
-      const res = await fetch(`/api/ip-info?ip=${encodeURIComponent(ip)}`);
-      if (!res.ok) return null;
-      const data: IpInfo = await res.json();
-      
-      setIpInfoCache(prev => new Map(prev).set(ip, data));
-      return data;
-    } catch {
-      return null;
-    }
-  }, [ipInfoCache]);
-
-  const formatIpInfo = useCallback((info: IpInfo) => {
-    const location = [info.city, info.region, info.country].filter(Boolean).join(", ");
-    const detectionFlags = [
-      info.detection.vpn && "VPN",
-      info.detection.proxy && "Proxy",
-      info.detection.hosting && "Hosting",
-      info.detection.tor && "Tor",
-      info.detection.cloud && "Cloud",
-    ].filter(Boolean).join(" | ");
-
-    return (
-      <div className="space-y-1 text-sm">
-        <div className="flex items-center gap-2">
-          <Icon icon="solar:map-point-bold" width={14} />
-          <span>{location}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Icon icon="solar:building-bold" width={14} />
-          <span>{info.as_name} ({info.asn})</span>
-        </div>
-        {detectionFlags && (
-          <div className="flex items-center gap-2">
-            <Icon icon="solar:shield-bold" width={14} />
-            <span>{detectionFlags}</span>
-          </div>
-        )}
-        {info.suggestion && (
-          <div className={`flex items-center gap-2 ${info.suggestion === "block" ? "text-danger" : "text-success"}`}>
-            <Icon icon={info.suggestion === "block" ? "solar:danger-triangle-bold" : "solar:check-circle-bold"} width={14} />
-            <span className="capitalize">Suggestion: {info.suggestion}</span>
-          </div>
-        )}
-      </div>
-    );
-  }, []);
 
   useEffect(() => {
     fetchData();
@@ -367,31 +280,19 @@ export default function ActivityContent() {
                             </div>
                             {isAuthAction && (
                               <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                {log.ip && log.ip !== "unknown" && (() => {
-                                  const ipAddress = log.ip;
-                                  return (
-                                    <Tooltip
-                                      content={ipInfoCache.get(ipAddress) ? formatIpInfo(ipInfoCache.get(ipAddress)!) : "Loading..."}
-                                      onOpenChange={(open) => {
-                                        if (open && !ipInfoCache.has(ipAddress)) {
-                                          fetchIpInfo(ipAddress);
-                                        }
-                                      }}
-                                    >
-                                      <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
-                                        <Icon icon="solar:global-bold" width={12} />
-                                        {ipAddress}
-                                      </span>
-                                    </Tooltip>
-                                  );
-                                })()}
-                                {parsed && parsed.browser !== "Unknown" && (
-                                  <Tooltip content={log.userAgent || "Unknown"}>
-                                    <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
-                                      <Icon icon="solar:monitor-bold" width={12} />
-                                      {parsed.browser} / {parsed.os}
+                                {log.ip && log.ip !== "unknown" && (
+                                  <Tooltip content={log.ip}>
+                                    <span className="flex items-center gap-1 text-xs text-default-400">
+                                      <Icon icon="solar:global-bold" width={12} />
+                                      {log.ip}
                                     </span>
                                   </Tooltip>
+                                )}
+                                {parsed && parsed.browser !== "Unknown" && (
+                                  <span className="flex items-center gap-1 text-xs text-default-400">
+                                    <Icon icon="solar:monitor-bold" width={12} />
+                                    {parsed.browser} / {parsed.os}
+                                  </span>
                                 )}
                               </div>
                             )}
