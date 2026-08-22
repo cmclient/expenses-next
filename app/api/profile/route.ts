@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getUsers, saveUsers, getUserById } from "@/lib/storage";
 import { getSession } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export async function GET() {
   const session = await getSession();
@@ -40,6 +41,7 @@ export async function PATCH(request: NextRequest) {
     users[idx].avatar = avatar || undefined;
     users[idx].updatedAt = new Date().toISOString();
     saveUsers(users);
+    logActivity(session.userId, "profile_update", request, { details: "Avatar changed" });
     return NextResponse.json({ success: true, avatar: users[idx].avatar || null });
   }
 
@@ -57,6 +59,7 @@ export async function PATCH(request: NextRequest) {
     users[idx].password = await bcrypt.hash(String(newPassword), 12);
     users[idx].updatedAt = new Date().toISOString();
     saveUsers(users);
+    logActivity(session.userId, "password_change", request);
     return NextResponse.json({ success: true });
   }
 

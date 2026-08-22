@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConfig, saveConfig } from "@/lib/storage";
 import { sanitizeString } from "@/lib/utils";
 import { getSession } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export async function GET() {
   const session = await getSession();
@@ -31,6 +32,10 @@ export async function PUT(request: NextRequest) {
   const config = getConfig(session.userId);
   config.categories = sanitized;
   saveConfig(session.userId, config);
+
+  logActivity(session.userId, "settings_update", request, {
+    details: `Categories updated (${sanitized.length} categories)`,
+  });
 
   return NextResponse.json({ categories: sanitized });
 }

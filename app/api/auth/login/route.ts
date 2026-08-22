@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { getUserByUsername, getUsers, saveUsers } from "@/lib/storage";
 import { createSession, COOKIE_NAME } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 import speakeasy from "speakeasy";
 
 export async function POST(request: NextRequest) {
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
 
   const valid = await bcrypt.compare(String(password), user.password);
   if (!valid) {
+    logActivity(user.id, "login_failed", request, { details: `Failed login attempt for ${username}` });
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
@@ -72,6 +74,8 @@ export async function POST(request: NextRequest) {
     username: user.username,
     isAdmin: user.isAdmin,
   }, expirationTime);
+
+  logActivity(user.id, "login", request, { details: `Logged in as ${user.username}` });
 
   const response = NextResponse.json({
     user: { id: user.id, username: user.username, isAdmin: user.isAdmin },

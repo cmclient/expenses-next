@@ -95,6 +95,38 @@ export interface ExpensesFile {
   expenses: Expense[];
 }
 
+export type ActivityAction =
+  | "login"
+  | "login_failed"
+  | "logout"
+  | "expense_add"
+  | "expense_edit"
+  | "expense_delete"
+  | "recurring_add"
+  | "recurring_delete"
+  | "reminder_add"
+  | "reminder_delete"
+  | "reminder_confirm"
+  | "settings_update"
+  | "password_change"
+  | "2fa_enable"
+  | "2fa_disable"
+  | "profile_update";
+
+export interface ActivityLog {
+  id: string;
+  action: ActivityAction;
+  details?: string;
+  metadata?: Record<string, string>;
+  ip?: string;
+  userAgent?: string;
+  timestamp: string;
+}
+
+export interface ActivityLogsFile {
+  logs: ActivityLog[];
+}
+
 // ---- Constants ----
 
 export const DEFAULT_CATEGORIES = [

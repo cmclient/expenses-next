@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import {
+  ActivityLog,
+  ActivityLogsFile,
   AppConfig,
   Expense,
   ExpensesFile,
@@ -70,6 +72,10 @@ function userRemindersPath(userId: string): string {
 
 function userPushSubscriptionsPath(userId: string): string {
   return path.join(userDataDir(userId), "push-subscriptions.json");
+}
+
+function userActivityPath(userId: string): string {
+  return path.join(userDataDir(userId), "activity.json");
 }
 
 // ---- Config (per-user) ----
@@ -165,4 +171,33 @@ export function savePushSubscriptions(userId: string, subscriptions: WebPushSubs
   ensureDir(dir);
   const data: WebPushSubscriptionsFile = { subscriptions };
   fs.writeFileSync(userPushSubscriptionsPath(userId), JSON.stringify(data, null, 4));
+}
+
+// ---- Activity Logs (per-user) ----
+
+const MAX_ACTIVITY_LOGS = 500;
+
+export function getActivityLogs(userId: string): ActivityLog[] {
+  const dir = userDataDir(userId);
+  const actPath = userActivityPath(userId);
+  ensureDir(dir);
+  if (!fs.existsSync(actPath)) {
+    const initial: ActivityLogsFile = { logs: [] };
+    fs.writeFileSync(actPath, JSON.stringify(initial, null, 4));
+    return [];
+  }
+  const raw = fs.readFileSync(actPath, "utf-8");
+  const data = JSON.parse(raw) as ActivityLogsFile;
+  return data.logs || [];
+}
+
+export function appendActivityLog(userId: string, log: ActivityLog) {
+  const logs = getActivityLogs(userId);
+  logs.unshift(log);
+  if (logs.length > MAX_ACTIVITY_LOGS) {
+    logs.length = MAX_ACTIVITY_LOGS;
+  }
+  const dir = userDataDir(userId);
+  ensureDir(dir);
+  fs.writeFileSync(userActivityPath(userId), JSON.stringify({ logs }, null, 4));
 }

@@ -5,6 +5,7 @@ import { Expense } from "@/lib/types";
 import { sanitizeString } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export async function GET() {
   const session = await getSession();
@@ -52,6 +53,11 @@ export async function PUT(request: NextRequest) {
   expenses.push(expense);
   saveExpenses(session.userId, expenses);
 
+  logActivity(session.userId, "expense_add", request, {
+    details: expense.name,
+    metadata: { amount: String(expense.amount), category: expense.category },
+  });
+
   return NextResponse.json(expense, { status: 201 });
 }
 
@@ -67,9 +73,17 @@ export async function DELETE(request: NextRequest) {
 
   const expenses = getExpenses(session.userId);
   const idSet = new Set(ids);
+  const deleted = expenses.filter((e) => idSet.has(e.id));
   const filtered = expenses.filter((e) => !idSet.has(e.id));
   const removed = expenses.length - filtered.length;
   saveExpenses(session.userId, filtered);
+
+  if (deleted.length > 0) {
+    logActivity(session.userId, "expense_delete", request, {
+      details: deleted.map((e) => e.name).join(", "),
+      metadata: { count: String(removed) },
+    });
+  }
 
   return NextResponse.json({ removed });
 }
@@ -109,5 +123,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   saveExpenses(session.userId, expenses);
+
+  logActivity(session.userId, "expense_edit", request, {
+    details: expenses[idx].name,
+    metadata: { amount: String(expenses[idx].amount), category: expenses[idx].category },
+  });
+
   return NextResponse.json(expenses[idx]);
 }

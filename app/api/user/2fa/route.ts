@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getUsers, saveUsers } from "@/lib/storage";
+import { logActivity, logActivityNoRequest } from "@/lib/activity";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
@@ -83,6 +84,8 @@ export async function PATCH(request: NextRequest) {
   users[idx].updatedAt = new Date().toISOString();
   saveUsers(users);
 
+  logActivity(session.userId, "2fa_enable", request);
+
   return NextResponse.json({ ok: true, backupCodes });
 }
 
@@ -99,6 +102,8 @@ export async function DELETE() {
   delete users[idx].twofaBackupCodes;
   users[idx].updatedAt = new Date().toISOString();
   saveUsers(users);
+
+  logActivityNoRequest(session.userId, "2fa_disable");
 
   return NextResponse.json({ ok: true });
 }

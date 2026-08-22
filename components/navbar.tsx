@@ -154,6 +154,13 @@ export function Navbar() {
                   {t("profile.title")}
                 </DropdownItem>
                 <DropdownItem
+                  key="activity"
+                  startContent={<Icon icon="solar:history-bold" width={16} />}
+                  onPress={() => router.push("/activity")}
+                >
+                  {t("nav.activity")}
+                </DropdownItem>
+                <DropdownItem
                   key="logout"
                   color="danger"
                   startContent={<Icon icon="solar:logout-2-bold" width={16} />}

@@ -4,6 +4,7 @@ import { RecurringExpense, Expense, VALID_INTERVALS } from "@/lib/types";
 import { sanitizeString } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 function generateOccurrences(rule: RecurringExpense): Expense[] {
   const expenses: Expense[] = [];
@@ -89,6 +90,11 @@ export async function PUT(request: NextRequest) {
   expenses.push(...generated);
   saveExpenses(session.userId, expenses);
 
+  logActivity(session.userId, "recurring_add", request, {
+    details: rule.name,
+    metadata: { interval: rule.interval, amount: String(rule.amount) },
+  });
+
   return NextResponse.json({ rule, generated: generated.length }, { status: 201 });
 }
 
@@ -104,6 +110,10 @@ export async function DELETE(request: NextRequest) {
   const config = getConfig(session.userId);
   const ruleIdx = config.recurringExpenses.findIndex((r) => r.id === id);
   if (ruleIdx === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  logActivity(session.userId, "recurring_delete", request, {
+    details: config.recurringExpenses[ruleIdx].name,
+  });
 
   config.recurringExpenses.splice(ruleIdx, 1);
   saveConfig(session.userId, config);
