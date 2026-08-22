@@ -46,7 +46,8 @@
     "login_failed": "Logowanie nie powiodło się",
     "enter_2fa_code": "Proszę wprowadzić kod 2FA",
     "2fa_code": "Kod uwierzytelniający",
-    "2fa_code_placeholder": "6-cyfrowy kod lub kod zapasowy"
+    "2fa_code_placeholder": "6-cyfrowy kod lub kod zapasowy",
+    "remember_me": "Zapamiętaj mnie"
   },
   "dashboard": {
     "income": "Przychody",
@@ -69,6 +70,8 @@
     "fill_fields": "Wypełnij wszystkie pola",
     "deleted": "Usunięto",
     "delete_failed": "Usunięcie nie powiodło się",
+    "delete_title": "Usuń transakcję",
+    "delete_message": "Czy na pewno chcesz usunąć tę transakcję? Tej operacji nie można cofnąć.",
     "updated": "Zaktualizowano",
     "update_failed": "Aktualizacja nie powiodła się",
     "failed_load": "Nie udało się załadować danych"
@@ -104,6 +107,8 @@
     "export_failed": "Eksport nie powiódł się",
     "deleted": "Usunięto",
     "delete_failed": "Usunięcie nie powiodło się",
+    "delete_title": "Usuń transakcję",
+    "delete_message": "Czy na pewno chcesz usunąć tę transakcję? Tej operacji nie można cofnąć.",
     "updated": "Zaktualizowano",
     "update_failed": "Aktualizacja nie powiodła się",
     "failed_load": "Nie udało się załadować danych"
