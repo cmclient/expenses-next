@@ -533,13 +533,6 @@ export default function DashboardContent() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`font-semibold text-sm whitespace-nowrap ${
-                            e.amount > 0 ? "text-success" : "text-danger"
-                          }`}
-                        >
-                          {formatCurrency(e.amount, e.currency || currency)}
-                        </span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             isIconOnly
@@ -567,6 +560,13 @@ export default function DashboardContent() {
                             <Icon icon="solar:trash-bin-minimalistic-bold" width={14} />
                           </Button>
                         </div>
+                        <span
+                          className={`font-semibold text-sm whitespace-nowrap ${
+                            e.amount > 0 ? "text-success" : "text-danger"
+                          }`}
+                        >
+                          {formatCurrency(e.amount, e.currency || currency)}
+                        </span>
                       </div>
                     </div>
                   ))}
