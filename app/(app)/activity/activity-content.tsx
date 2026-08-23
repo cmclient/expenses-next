@@ -14,6 +14,7 @@ import {
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { Icon } from "@iconify/react";
+import { UAParser } from "ua-parser-js";
 import { ActivityLog, ActivityAction } from "@/lib/types";
 import { useTranslation } from "@/lib/i18n";
 
@@ -43,25 +44,26 @@ function countryFlagIcon(code: string): string {
   return `flag:${code.toLowerCase()}-4x3`;
 }
 
-function parseUserAgent(ua: string): { browser: string; os: string } {
+function parseUserAgent(ua: string): { browser: string; os: string; deviceType?: string } {
   if (!ua || ua === "unknown") return { browser: "Unknown", os: "Unknown" };
 
-  let browser = "Unknown";
-  if (ua.includes("Edg/")) browser = "Edge";
-  else if (ua.includes("OPR/") || ua.includes("Opera")) browser = "Opera";
-  else if (ua.includes("Chrome/") && !ua.includes("Edg/")) browser = "Chrome";
-  else if (ua.includes("Firefox/")) browser = "Firefox";
-  else if (ua.includes("Safari/") && !ua.includes("Chrome")) browser = "Safari";
+  const result = new UAParser(ua).getResult();
+  return {
+    browser: result.browser.name || "Unknown",
+    os: result.os.name || "Unknown",
+    deviceType: result.device.type,
+  };
+}
 
-  let os = "Unknown";
-  if (ua.includes("Windows NT 10")) os = "Windows";
-  else if (ua.includes("Windows")) os = "Windows";
-  else if (ua.includes("Mac OS X")) os = "macOS";
-  else if (ua.includes("Android")) os = "Android";
-  else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-  else if (ua.includes("Linux")) os = "Linux";
-
-  return { browser, os };
+function deviceIcon(deviceType?: string): string {
+  switch (deviceType) {
+    case "mobile":
+      return "solar:smartphone-bold";
+    case "tablet":
+      return "solar:tablet-bold";
+    default:
+      return "solar:monitor-bold";
+  }
 }
 
 function formatRelativeTime(timestamp: string): string {
@@ -83,15 +85,24 @@ function formatRelativeTime(timestamp: string): string {
 
 interface IpInfo {
   ip: string;
+  hostname?: string;
+  network_type?: string;
   city?: string;
   region?: string;
+  postal?: string;
   country?: string;
   country_code?: string;
   continent?: string;
+  latitude?: number | string;
+  longitude?: number | string;
   as_name?: string;
-  asn?: string;
+  as_domain?: string;
+  asn?: string | number;
   timezone?: string;
   local_time?: string;
+  suggestion?: string;
+  is_bogon?: boolean;
+  is_anycast?: boolean;
   detection?: {
     vpn?: boolean;
     proxy?: boolean;
@@ -99,6 +110,10 @@ interface IpInfo {
     hosting?: boolean;
     cloud?: boolean;
   };
+}
+
+function isKnown(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== "Unknown" && value !== "";
 }
 
 const ipInfoCache = new Map<string, IpInfo | "loading" | "error">();
@@ -149,29 +164,79 @@ function IpTooltipContent({ ip }: { ip: string }) {
   if (info.detection?.tor) flags.push("Tor");
   if (info.detection?.hosting) flags.push("Hosting");
   if (info.detection?.cloud) flags.push("Cloud");
+  if (info.is_anycast) flags.push("Anycast");
+  if (info.is_bogon) flags.push("Bogon");
 
-  const flagIcon = info.country_code ? countryFlagIcon(info.country_code) : "";
-  const location = [info.city, info.region, info.country].filter(Boolean).join(", ");
+  const flagIcon = isKnown(info.country_code) ? countryFlagIcon(info.country_code!) : "";
+  const location = [info.city, info.region, info.postal, info.country]
+    .filter(isKnown)
+    .join(", ");
+  const hasCoords = isKnown(info.latitude) && isKnown(info.longitude);
+  const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${info.latitude},${info.longitude}` : undefined;
 
   return (
-    <div className="p-1 space-y-1.5 max-w-[280px]">
-      <div className="font-mono text-xs text-default-500">{ip}</div>
+    <div className="p-1 space-y-1.5 max-w-[300px]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-xs text-default-500">{ip}</span>
+        {info.suggestion && (
+          <span
+            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase ${
+              info.suggestion === "block"
+                ? "bg-danger/15 text-danger"
+                : "bg-success/15 text-success"
+            }`}
+          >
+            {info.suggestion}
+          </span>
+        )}
+      </div>
+
       {location && (
         <div className="flex items-center gap-1.5 text-sm">
           {flagIcon && <Icon icon={flagIcon} width={16} height={12} style={{ borderRadius: "2px" }} />}
           <span>{location}</span>
         </div>
       )}
-      {info.as_name && (
+
+      {isKnown(info.as_name) && (
         <div className="text-xs text-default-400">
-          {info.as_name} {info.asn ? `(${info.asn})` : ""}
+          {info.as_name}
+          {isKnown(info.asn) ? ` (AS${info.asn})` : ""}
         </div>
       )}
-      {info.timezone && (
+
+      {isKnown(info.as_domain) && (
+        <div className="text-xs text-default-400">{info.as_domain}</div>
+      )}
+
+      {isKnown(info.hostname) && (
+        <div className="text-xs text-default-400 break-all">{info.hostname}</div>
+      )}
+
+      {isKnown(info.network_type) && (
+        <div className="text-xs text-default-400">{info.network_type}</div>
+      )}
+
+      {isKnown(info.timezone) && (
         <div className="text-xs text-default-400">
-          UTC{info.timezone}{info.local_time ? ` — ${info.local_time}` : ""}
+          UTC{info.timezone}
+          {isKnown(info.local_time) ? ` — ${info.local_time}` : ""}
         </div>
       )}
+
+      {mapsUrl && (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Icon icon="solar:map-point-bold" width={12} />
+          {info.latitude}, {info.longitude}
+        </a>
+      )}
+
       {flags.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
           {flags.map((f) => (
@@ -419,8 +484,8 @@ export default function ActivityContent() {
                                     classNames={{ content: "p-2" }}
                                   >
                                     <span className="flex items-center gap-1 text-xs text-default-400 cursor-help">
-                                      <Icon icon="solar:monitor-bold" width={12} />
-                                      {parsed.browser} / {parsed.os}
+                                      <Icon icon={deviceIcon(parsed.deviceType)} width={12} />
+                                      {parsed.browser}, {parsed.os}
                                     </span>
                                   </Tooltip>
                                 )}
