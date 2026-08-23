@@ -266,7 +266,7 @@ export default function TransactionsContent() {
             {filteredExpenses.length} {filteredExpenses.length !== 1 ? t("transactions.transactions") : t("transactions.transaction")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {!showAll && (
             <div className="flex items-center gap-1">
               <Button isIconOnly variant="flat" size="sm" aria-label={t("transactions.prev_month")} onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, d.getDate()))}>
