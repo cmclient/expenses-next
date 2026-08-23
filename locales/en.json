@@ -112,7 +112,12 @@
     "delete_message": "Are you sure you want to delete this transaction? This action cannot be undone.",
     "updated": "Updated",
     "update_failed": "Update failed",
-    "failed_load": "Failed to load data"
+    "failed_load": "Failed to load data",
+    "prev_month": "Previous month",
+    "next_month": "Next month",
+    "duplicate": "Duplicate",
+    "edit": "Edit",
+    "delete": "Delete"
   },
   "recurring": {
     "title": "Recurring Transactions",

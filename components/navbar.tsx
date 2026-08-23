@@ -142,12 +142,13 @@ export function Navbar() {
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label="User menu">
-                <DropdownItem key="info" isReadOnly className="opacity-100">
+                <DropdownItem key="info" isReadOnly className="opacity-100" textValue={`${t("user_menu.signed_in_as")} ${user.username}`}>
                   <p className="text-xs text-default-400">{t("user_menu.signed_in_as")}</p>
                   <p className="font-medium">{user.username}</p>
                 </DropdownItem>
                 <DropdownItem
                   key="profile"
+                  textValue={t("profile.title")}
                   startContent={<Icon icon="solar:user-id-bold" width={16} />}
                   onPress={() => router.push("/profile")}
                 >
@@ -155,6 +156,7 @@ export function Navbar() {
                 </DropdownItem>
                 <DropdownItem
                   key="activity"
+                  textValue={t("nav.activity")}
                   startContent={<Icon icon="solar:history-bold" width={16} />}
                   onPress={() => router.push("/activity")}
                 >
@@ -163,6 +165,7 @@ export function Navbar() {
                 <DropdownItem
                   key="logout"
                   color="danger"
+                  textValue={t("user_menu.sign_out")}
                   startContent={<Icon icon="solar:logout-2-bold" width={16} />}
                   onPress={handleLogout}
                 >

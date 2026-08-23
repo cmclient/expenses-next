@@ -269,11 +269,11 @@ export default function TransactionsContent() {
         <div className="flex items-center gap-3">
           {!showAll && (
             <div className="flex items-center gap-1">
-              <Button isIconOnly variant="flat" size="sm" onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, d.getDate()))}>
+              <Button isIconOnly variant="flat" size="sm" aria-label={t("transactions.prev_month")} onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, d.getDate()))}>
                 <Icon icon="solar:alt-arrow-left-bold" width={16} />
               </Button>
               <span className="text-sm font-medium min-w-[130px] text-center">{formatMonth(currentDate)}</span>
-              <Button isIconOnly variant="flat" size="sm" onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()))}>
+              <Button isIconOnly variant="flat" size="sm" aria-label={t("transactions.next_month")} onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()))}>
                 <Icon icon="solar:alt-arrow-right-bold" width={16} />
               </Button>
             </div>
@@ -299,6 +299,7 @@ export default function TransactionsContent() {
           size="sm"
         />
         <Select
+          aria-label={t("transactions.all_categories")}
           placeholder={t("transactions.all_categories")}
           selectedKeys={filterCategory ? [filterCategory] : []}
           onSelectionChange={(keys) => { setFilterCategory(Array.from(keys)[0] as string || ""); setPage(1); }}
@@ -390,13 +391,13 @@ export default function TransactionsContent() {
                       <td className="px-4 py-3 text-default-400">{formatDate(e.date)}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
-                          <Button isIconOnly size="sm" variant="light" onPress={() => openDuplicate(e)}>
+                          <Button isIconOnly size="sm" variant="light" aria-label={t("transactions.duplicate")} onPress={() => openDuplicate(e)}>
                             <Icon icon="solar:copy-bold" width={14} />
                           </Button>
-                          <Button isIconOnly size="sm" variant="light" onPress={() => openEdit(e)}>
+                          <Button isIconOnly size="sm" variant="light" aria-label={t("transactions.edit")} onPress={() => openEdit(e)}>
                             <Icon icon="solar:pen-bold" width={14} />
                           </Button>
-                          <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => confirmDelete(e.id)}>
+                          <Button isIconOnly size="sm" variant="light" color="danger" aria-label={t("transactions.delete")} onPress={() => confirmDelete(e.id)}>
                             <Icon icon="solar:trash-bin-minimalistic-bold" width={14} />
                           </Button>
                         </div>

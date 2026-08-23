@@ -112,7 +112,12 @@
     "delete_message": "Czy na pewno chcesz usunąć tę transakcję? Tej operacji nie można cofnąć.",
     "updated": "Zaktualizowano",
     "update_failed": "Aktualizacja nie powiodła się",
-    "failed_load": "Nie udało się załadować danych"
+    "failed_load": "Nie udało się załadować danych",
+    "prev_month": "Poprzedni miesiąc",
+    "next_month": "Następny miesiąc",
+    "duplicate": "Duplikuj",
+    "edit": "Edytuj",
+    "delete": "Usuń"
   },
   "recurring": {
     "title": "Transakcje cykliczne",
