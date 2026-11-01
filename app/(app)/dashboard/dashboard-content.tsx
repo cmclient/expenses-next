@@ -46,13 +46,19 @@ export default function DashboardContent() {
   const [isIncome, setIsIncome] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Quick edit modal
+  // Quick edit / duplicate modal
   const { isOpen, onOpen, onClose } = useDisclosure();
+  // Delete confirmation modal
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editTags, setEditTags] = useState("");
+  const [editIsIncome, setEditIsIncome] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -197,17 +203,26 @@ export default function DashboardContent() {
     }
   };
 
-  const handleDeleteExpense = async (id: string) => {
+  const confirmDelete = (id: string) => {
+    setDeleteId(id);
+    onDeleteOpen();
+  };
+
+  const handleDeleteExpense = async () => {
+    if (!deleteId) return;
     try {
       await fetch("/api/expenses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deleteId }),
       });
       addToast({ title: t("dashboard.deleted"), color: "success" });
       fetchData();
     } catch {
       addToast({ title: t("dashboard.delete_failed"), color: "danger" });
+    } finally {
+      onDeleteClose();
+      setDeleteId(null);
     }
   };
 
@@ -217,34 +232,69 @@ export default function DashboardContent() {
     setEditAmount(String(Math.abs(e.amount)));
     setEditCategory(e.category);
     setEditDate(toDateTimeLocal(e.date));
+    setEditTags((e.tags || []).join(", "));
+    setEditIsIncome(e.amount > 0);
+    setIsDuplicate(false);
+    onOpen();
+  };
+
+  const openDuplicate = (e: Expense) => {
+    setEditExpense(e);
+    setEditName(e.name);
+    setEditAmount(String(Math.abs(e.amount)));
+    setEditCategory(e.category);
+    setEditDate(toDateTimeLocal());
+    setEditTags((e.tags || []).join(", "));
+    setEditIsIncome(e.amount > 0);
+    setIsDuplicate(true);
     onOpen();
   };
 
   const handleEditSave = async () => {
     if (!editExpense) return;
     try {
-      const finalAmount =
-        editExpense.amount > 0
-          ? Math.abs(parseFloat(editAmount))
-          : -Math.abs(parseFloat(editAmount));
+      const finalAmount = editIsIncome
+        ? Math.abs(parseFloat(editAmount))
+        : -Math.abs(parseFloat(editAmount));
+      const tagList = editTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t);
 
-      const res = await fetch("/api/expenses", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editExpense.id,
-          name: editName,
-          amount: finalAmount,
-          category: editCategory,
-          date: new Date(editDate).toISOString(),
-        }),
-      });
-      if (!res.ok) throw new Error("Update failed");
-      addToast({ title: t("dashboard.updated"), color: "success" });
+      if (isDuplicate) {
+        const res = await fetch("/api/expenses", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: editName,
+            amount: finalAmount,
+            category: editCategory,
+            date: new Date(editDate).toISOString(),
+            tags: tagList,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        addToast({ title: t("dashboard.expense_added"), color: "success" });
+      } else {
+        const res = await fetch("/api/expenses", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editExpense.id,
+            name: editName,
+            amount: finalAmount,
+            category: editCategory,
+            date: new Date(editDate).toISOString(),
+            tags: tagList,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        addToast({ title: t("dashboard.updated"), color: "success" });
+      }
       onClose();
       fetchData();
     } catch {
-      addToast({ title: t("dashboard.update_failed"), color: "danger" });
+      addToast({ title: isDuplicate ? t("dashboard.failed_load") : t("dashboard.update_failed"), color: "danger" });
     }
   };
 
@@ -495,14 +545,15 @@ export default function DashboardContent() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`font-semibold text-sm whitespace-nowrap ${
-                            e.amount > 0 ? "text-success" : "text-danger"
-                          }`}
-                        >
-                          {formatCurrency(e.amount, e.currency || currency)}
-                        </span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            onPress={() => openDuplicate(e)}
+                          >
+                            <Icon icon="solar:copy-bold" width={14} />
+                          </Button>
                           <Button
                             isIconOnly
                             size="sm"
@@ -516,11 +567,18 @@ export default function DashboardContent() {
                             size="sm"
                             variant="light"
                             color="danger"
-                            onPress={() => handleDeleteExpense(e.id)}
+                            onPress={() => confirmDelete(e.id)}
                           >
                             <Icon icon="solar:trash-bin-minimalistic-bold" width={14} />
                           </Button>
                         </div>
+                        <span
+                          className={`font-semibold text-sm whitespace-nowrap ${
+                            e.amount > 0 ? "text-success" : "text-danger"
+                          }`}
+                        >
+                          {formatCurrency(e.amount, e.currency || currency)}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -534,7 +592,7 @@ export default function DashboardContent() {
       {/* Edit Modal */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalContent>
-          <ModalHeader>{t("dashboard.edit_expense")}</ModalHeader>
+          <ModalHeader>{isDuplicate ? t("dashboard.duplicate_expense") : t("dashboard.edit_expense")}</ModalHeader>
           <ModalBody className="space-y-3">
             <Input label={t("common.name")} value={editName} onValueChange={setEditName} />
             <Input label={t("common.amount")} type="number" value={editAmount} onValueChange={setEditAmount} />
@@ -548,10 +606,34 @@ export default function DashboardContent() {
               ))}
             </Select>
             <Input label={t("common.date")} type="datetime-local" value={editDate} onValueChange={setEditDate} />
+            <Input
+              label={t("common.tags")}
+              placeholder={t("dashboard.tags_placeholder")}
+              value={editTags}
+              onValueChange={setEditTags}
+              startContent={<Icon icon="solar:tag-bold" className="text-default-400" width={16} />}
+            />
+            <Checkbox isSelected={editIsIncome} onValueChange={setEditIsIncome}>
+              <span className="text-sm">{t("dashboard.this_is_income")}</span>
+            </Checkbox>
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={onClose}>{t("common.cancel")}</Button>
             <Button color="primary" onPress={handleEditSave}>{t("common.save")}</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader>{t("dashboard.delete_title")}</ModalHeader>
+          <ModalBody>
+            <p className="text-default-500">{t("dashboard.delete_message")}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={onDeleteClose}>{t("common.cancel")}</Button>
+            <Button color="danger" onPress={handleDeleteExpense}>{t("common.confirm")}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

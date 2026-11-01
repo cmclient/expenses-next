@@ -11,6 +11,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.STORAGE_URL || path.join(__dirname, "data");
 const USERS_PATH = path.join(DATA_DIR, "users.json");
+const PERSISTENCE_MODE = (process.env.PERSISTENCE_MODE || "JSON").toUpperCase();
 
 let bcrypt;
 try {
@@ -28,13 +29,74 @@ try {
   process.exit(1);
 }
 
+let Database;
+if (PERSISTENCE_MODE === "SQLITE") {
+  try {
+    Database = (await import("better-sqlite3")).default;
+  } catch {
+    console.error("Error: better-sqlite3 not installed. Run: npm install");
+    process.exit(1);
+  }
+}
+
 function ensureDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 }
 
+// ---- SQLite helpers ----
+
+let _db = null;
+
+function getSqliteDb() {
+  if (_db) return _db;
+  ensureDir();
+  const dbPath = process.env.SQLITE_PATH || path.join(DATA_DIR, "expenses.sqlite");
+  _db = new Database(dbPath);
+  _db.pragma("journal_mode = WAL");
+  _db.pragma("foreign_keys = ON");
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      isAdmin INTEGER NOT NULL DEFAULT 0,
+      avatar TEXT,
+      twofaSecret TEXT,
+      twofaEnabled INTEGER NOT NULL DEFAULT 0,
+      twofaBackupCodes TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )
+  `);
+  return _db;
+}
+
+function sqliteRowToUser(row) {
+  const user = {
+    id: row.id,
+    username: row.username,
+    password: row.password,
+    isAdmin: Boolean(row.isAdmin),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+  if (row.avatar) user.avatar = row.avatar;
+  if (row.twofaSecret) user.twofaSecret = row.twofaSecret;
+  if (row.twofaEnabled) user.twofaEnabled = Boolean(row.twofaEnabled);
+  if (row.twofaBackupCodes) user.twofaBackupCodes = JSON.parse(row.twofaBackupCodes);
+  return user;
+}
+
+// ---- Persistence-aware getters/setters ----
+
 function getUsers() {
+  if (PERSISTENCE_MODE === "SQLITE") {
+    const db = getSqliteDb();
+    return db.prepare("SELECT * FROM users").all().map(sqliteRowToUser);
+  }
+
   ensureDir();
   if (!fs.existsSync(USERS_PATH)) {
     return [];
@@ -45,6 +107,38 @@ function getUsers() {
 }
 
 function saveUsers(users) {
+  if (PERSISTENCE_MODE === "SQLITE") {
+    const db = getSqliteDb();
+    const upsert = db.prepare(`
+      INSERT OR REPLACE INTO users
+        (id, username, password, isAdmin, avatar, twofaSecret, twofaEnabled, twofaBackupCodes, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const del = db.prepare("DELETE FROM users WHERE id = ?");
+
+    db.transaction(() => {
+      const existingIds = db.prepare("SELECT id FROM users").all().map((r) => r.id);
+      const newIds = new Set(users.map((u) => u.id));
+
+      for (const id of existingIds) {
+        if (!newIds.has(id)) del.run(id);
+      }
+
+      for (const u of users) {
+        upsert.run(
+          u.id, u.username, u.password,
+          u.isAdmin ? 1 : 0,
+          u.avatar || null,
+          u.twofaSecret || null,
+          u.twofaEnabled ? 1 : 0,
+          u.twofaBackupCodes ? JSON.stringify(u.twofaBackupCodes) : null,
+          u.createdAt, u.updatedAt
+        );
+      }
+    })();
+    return;
+  }
+
   ensureDir();
   fs.writeFileSync(USERS_PATH, JSON.stringify({ users }, null, 4));
 }
@@ -67,7 +161,11 @@ function usage() {
     info <username>               Show user details
 
   Environment:
-    STORAGE_URL   Data directory path (default: ./data)
+    STORAGE_URL        Data directory path (default: ./data)
+    PERSISTENCE_MODE   JSON or SQLITE (default: JSON)
+    SQLITE_PATH        SQLite file path (default: ./data/expenses.sqlite)
+
+  Current mode: ${PERSISTENCE_MODE}
 `);
 }
 
@@ -79,7 +177,7 @@ async function main() {
         console.log("No users found.");
         return;
       }
-      console.log(`\n  Users (${users.length}):\n`);
+      console.log(`\n  Users (${users.length}) [${PERSISTENCE_MODE}]:\n`);
       for (const u of users) {
         const admin = u.isAdmin ? " [ADMIN]" : "";
         console.log(`  - ${u.username}${admin}  (id: ${u.id}, created: ${u.createdAt})`);
@@ -212,7 +310,8 @@ async function main() {
       console.log(`  ID: ${user.id}`);
       console.log(`  Admin: ${user.isAdmin}`);
       console.log(`  Created: ${user.createdAt}`);
-      console.log(`  Updated: ${user.updatedAt}\n`);
+      console.log(`  Updated: ${user.updatedAt}`);
+      console.log(`  Mode: ${PERSISTENCE_MODE}\n`);
       break;
     }
 

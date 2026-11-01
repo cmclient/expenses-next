@@ -14,11 +14,11 @@ export interface SessionPayload {
   isAdmin: boolean;
 }
 
-export async function createSession(payload: SessionPayload): Promise<string> {
+export async function createSession(payload: SessionPayload, expirationTime: string = "1d"): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(expirationTime)
     .sign(JWT_SECRET);
 }
 

@@ -8,6 +8,7 @@ import {
   Button,
   Input,
   Chip,
+  Checkbox,
   Switch,
   Pagination,
   Modal,
@@ -45,12 +46,16 @@ export default function TransactionsContent() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editTags, setEditTags] = useState("");
+  const [editIsIncome, setEditIsIncome] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -133,17 +138,26 @@ export default function TransactionsContent() {
   const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE));
   const pagedExpenses = filteredExpenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleDelete = async (id: string) => {
+  const confirmDelete = (id: string) => {
+    setDeleteId(id);
+    onDeleteOpen();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
       await fetch("/api/expenses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: deleteId }),
       });
       addToast({ title: t("transactions.deleted"), color: "success" });
       fetchData();
     } catch {
       addToast({ title: t("transactions.delete_failed"), color: "danger" });
+    } finally {
+      onDeleteClose();
+      setDeleteId(null);
     }
   };
 
@@ -154,38 +168,68 @@ export default function TransactionsContent() {
     setEditCategory(e.category);
     setEditDate(toDateTimeLocal(e.date));
     setEditTags((e.tags || []).join(", "));
+    setEditIsIncome(e.amount > 0);
+    setIsDuplicate(false);
+    onOpen();
+  };
+
+  const openDuplicate = (e: Expense) => {
+    setEditExpense(e);
+    setEditName(e.name);
+    setEditAmount(String(Math.abs(e.amount)));
+    setEditCategory(e.category);
+    setEditDate(toDateTimeLocal());
+    setEditTags((e.tags || []).join(", "));
+    setEditIsIncome(e.amount > 0);
+    setIsDuplicate(true);
     onOpen();
   };
 
   const handleEditSave = async () => {
     if (!editExpense) return;
     try {
-      const finalAmount =
-        editExpense.amount > 0
-          ? Math.abs(parseFloat(editAmount))
-          : -Math.abs(parseFloat(editAmount));
+      const finalAmount = editIsIncome
+        ? Math.abs(parseFloat(editAmount))
+        : -Math.abs(parseFloat(editAmount));
+      const tagList = editTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t);
 
-      const res = await fetch("/api/expenses", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editExpense.id,
-          name: editName,
-          amount: finalAmount,
-          category: editCategory,
-          date: new Date(editDate).toISOString(),
-          tags: editTags
-            .split(",")
-            .map((t) => t.trim())
-            .filter((t) => t),
-        }),
-      });
-      if (!res.ok) throw new Error();
-      addToast({ title: t("transactions.updated"), color: "success" });
+      if (isDuplicate) {
+        const res = await fetch("/api/expenses", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: editName,
+            amount: finalAmount,
+            category: editCategory,
+            date: new Date(editDate).toISOString(),
+            tags: tagList,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        addToast({ title: t("transactions.duplicated"), color: "success" });
+      } else {
+        const res = await fetch("/api/expenses", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editExpense.id,
+            name: editName,
+            amount: finalAmount,
+            category: editCategory,
+            date: new Date(editDate).toISOString(),
+            tags: tagList,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        addToast({ title: t("transactions.updated"), color: "success" });
+      }
       onClose();
       fetchData();
     } catch {
-      addToast({ title: t("transactions.update_failed"), color: "danger" });
+      addToast({ title: isDuplicate ? t("transactions.duplicate_failed") : t("transactions.update_failed"), color: "danger" });
     }
   };
 
@@ -222,14 +266,14 @@ export default function TransactionsContent() {
             {filteredExpenses.length} {filteredExpenses.length !== 1 ? t("transactions.transactions") : t("transactions.transaction")}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {!showAll && (
             <div className="flex items-center gap-1">
-              <Button isIconOnly variant="flat" size="sm" onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, d.getDate()))}>
+              <Button isIconOnly variant="flat" size="sm" aria-label={t("transactions.prev_month")} onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, d.getDate()))}>
                 <Icon icon="solar:alt-arrow-left-bold" width={16} />
               </Button>
               <span className="text-sm font-medium min-w-[130px] text-center">{formatMonth(currentDate)}</span>
-              <Button isIconOnly variant="flat" size="sm" onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()))}>
+              <Button isIconOnly variant="flat" size="sm" aria-label={t("transactions.next_month")} onPress={() => setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()))}>
                 <Icon icon="solar:alt-arrow-right-bold" width={16} />
               </Button>
             </div>
@@ -255,6 +299,7 @@ export default function TransactionsContent() {
           size="sm"
         />
         <Select
+          aria-label={t("transactions.all_categories")}
           placeholder={t("transactions.all_categories")}
           selectedKeys={filterCategory ? [filterCategory] : []}
           onSelectionChange={(keys) => { setFilterCategory(Array.from(keys)[0] as string || ""); setPage(1); }}
@@ -346,10 +391,13 @@ export default function TransactionsContent() {
                       <td className="px-4 py-3 text-default-400">{formatDate(e.date)}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1">
-                          <Button isIconOnly size="sm" variant="light" onPress={() => openEdit(e)}>
+                          <Button isIconOnly size="sm" variant="light" aria-label={t("transactions.duplicate")} onPress={() => openDuplicate(e)}>
+                            <Icon icon="solar:copy-bold" width={14} />
+                          </Button>
+                          <Button isIconOnly size="sm" variant="light" aria-label={t("transactions.edit")} onPress={() => openEdit(e)}>
                             <Icon icon="solar:pen-bold" width={14} />
                           </Button>
-                          <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => handleDelete(e.id)}>
+                          <Button isIconOnly size="sm" variant="light" color="danger" aria-label={t("transactions.delete")} onPress={() => confirmDelete(e.id)}>
                             <Icon icon="solar:trash-bin-minimalistic-bold" width={14} />
                           </Button>
                         </div>
@@ -372,7 +420,7 @@ export default function TransactionsContent() {
       {/* Edit Modal */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalContent>
-          <ModalHeader>{t("transactions.edit_transaction")}</ModalHeader>
+          <ModalHeader>{isDuplicate ? t("transactions.duplicate_transaction") : t("transactions.edit_transaction")}</ModalHeader>
           <ModalBody className="space-y-3">
             <Input label={t("common.name")} value={editName} onValueChange={setEditName} />
             <Input label={t("common.amount")} type="number" value={editAmount} onValueChange={setEditAmount} />
@@ -387,10 +435,27 @@ export default function TransactionsContent() {
             </Select>
             <Input label={t("common.date")} type="datetime-local" value={editDate} onValueChange={setEditDate} />
             <Input label={t("transactions.tags_label")} value={editTags} onValueChange={setEditTags} />
+            <Checkbox isSelected={editIsIncome} onValueChange={setEditIsIncome}>
+              <span className="text-sm">{t("dashboard.this_is_income")}</span>
+            </Checkbox>
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={onClose}>{t("common.cancel")}</Button>
             <Button color="primary" onPress={handleEditSave}>{t("common.save")}</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader>{t("transactions.delete_title")}</ModalHeader>
+          <ModalBody>
+            <p className="text-default-500">{t("transactions.delete_message")}</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={onDeleteClose}>{t("common.cancel")}</Button>
+            <Button color="danger" onPress={handleDelete}>{t("common.confirm")}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

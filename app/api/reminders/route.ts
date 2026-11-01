@@ -4,6 +4,7 @@ import { Reminder, VALID_INTERVALS } from "@/lib/types";
 import { sanitizeString } from "@/lib/utils";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -122,6 +123,11 @@ export async function PUT(request: NextRequest) {
   reminders.push(reminder);
   saveReminders(session.userId, reminders);
 
+  logActivity(session.userId, "reminder_add", request, {
+    details: `${reminder.name} from ${reminder.payer}`,
+    metadata: { amount: String(reminder.amount) },
+  });
+
   return NextResponse.json({ reminder }, { status: 201 });
 }
 
@@ -136,6 +142,8 @@ export async function DELETE(request: NextRequest) {
   const reminders = getReminders(session.userId);
   const idx = reminders.findIndex((r) => r.id === id);
   if (idx === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  logActivity(session.userId, "reminder_delete", request, { details: reminders[idx].name });
 
   reminders.splice(idx, 1);
   saveReminders(session.userId, reminders);
